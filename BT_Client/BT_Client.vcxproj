@@ -21,6 +21,10 @@
   <ItemGroup>
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="hash.h" />
+    <ClInclude Include="torrent.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{3190FD2A-0071-470A-A038-BE3478879E9F}</ProjectGuid>
