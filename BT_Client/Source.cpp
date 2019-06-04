@@ -4,7 +4,9 @@
 #include<string>
 #include<vector>
 
-#include<process.h>
+#include<thread>
+#include<mutex>
+
 #include<WinSock2.h>
 #include<stdlib.h>
 
@@ -19,12 +21,18 @@ using namespace std;
 
 const int bufflen = 20000;
 const int piece_len = 20000;
+const string port = "10086";
 
-vector<HANDLE> thread_pool;
+int num = 0;
+mutex mu;
 
+int download(torrent_file);
 
 int main()
 {
+	WSADATA wsadata;
+	WSAStartup(WSVERS, &wsadata);
+
 	while (true)
 	{
 		string order;
@@ -41,26 +49,59 @@ int main()
 			cout << "输入服务器地址：";
 			string server;
 			cin >> server;
-			make_torrent(filename, piece_len, server);
-			cout<<""
+			string t_name = make_torrent(filename, piece_len, server);
+			cout << t_name << "创建成功！" << endl;
 		}
-		else if (order=="2")
+		else if (order == "2")
 		{
-
+			cout << "输入文件名：";
+			string filename;
+			cin >> filename;
+			torrent_file t_file = read_torrent(filename);
+			thread t(download, t_file);
+			mu.lock();
+			num++;
+			mu.unlock();
+			t.detach();
 		}
-		else if(order=="q")
+		else if (order == "q")
 		{
-			if (thread_pool.size())
-			{
-				cout << "";
-			}
-			else
-			{
-				break;
-			}
+			cout << "等待所有下载完成..." << endl;
+			while (num);
 		}
 	}
 
+
+	return 0;
+}
+
+int download(torrent_file tf)
+{
+	struct sockaddr_in sin;
+	SOCKET sock;
+
+	sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = inet_addr(tf.announce.c_str());
+	sin.sin_port = htons((u_short)stoi(port));
+	int ret = connect(sock, (struct sockaddr*)&sin, sizeof(sin));
+
+	mu.lock();
+	cout << "正在连接服务器...\n";
+	mu.unlock();
+
+	if (ret == 0)
+	{
+		mu.lock();
+		cout << "连接成功!\n";
+		mu.unlock();
+		send(sock, tf.name.c_str(), tf.name.length(), 0);
+		//recv
+
+
+	}
 
 	return 0;
 }
