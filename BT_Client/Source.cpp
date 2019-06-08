@@ -22,11 +22,14 @@ using namespace std;
 const int bufflen = 20000;
 const int piece_len = 20000;
 const string port = "10086";
+const int max_threads = 3;
 
-int num = 0;
+
+int download_num = 0;
 mutex mu;
 
 int download(torrent_file);
+int download_t(int start, int num, int index);
 
 int main()
 {
@@ -58,16 +61,12 @@ int main()
 			string filename;
 			cin >> filename;
 			torrent_file t_file = read_torrent(filename);
-			thread t(download, t_file);
-			mu.lock();
-			num++;
-			mu.unlock();
-			t.detach();
+			download(t_file);
+			//传输
 		}
 		else if (order == "q")
 		{
-			cout << "等待所有下载完成..." << endl;
-			while (num);
+
 		}
 	}
 
@@ -80,6 +79,8 @@ int download(torrent_file tf)
 	struct sockaddr_in sin;
 	SOCKET sock;
 
+	char buff[bufflen];
+
 	sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 	memset(&sin, 0, sizeof(sin));
@@ -88,19 +89,41 @@ int download(torrent_file tf)
 	sin.sin_port = htons((u_short)stoi(port));
 	int ret = connect(sock, (struct sockaddr*)&sin, sizeof(sin));
 
-	mu.lock();
-	cout << "正在连接服务器...\n";
-	mu.unlock();
-
 	if (ret == 0)
 	{
-		mu.lock();
-		cout << "连接成功!\n";
-		mu.unlock();
 		send(sock, tf.name.c_str(), tf.name.length(), 0);
-		//recv
+		recv(sock, buff, bufflen, 0);
+		//...
 
+		//分给多(3)个线程下载
+		int download_task = (tf.pieces.size() + max_threads - 1) / max_threads;
+		int index = 0;
+		for (int i = 0; i < tf.pieces.size(); index++, i += download_task)
+		{
+			thread temp(download_t, i, download_task, index);
+			mu.lock();
+			download_num++;
+			mu.unlock();
+			temp.detach();
+		}
+		//避免忙等待
+		while (download_num)
+			this_thread::yield();
+		ofstream targetfile(tf.name, ios::binary);
+		for (int i = 0; i < index; i++)
+		{
+			string tempfilename = to_string(i) + ".temp";
+			ifstream tempfile(tempfilename, ios::binary);
 
+			while (!tempfile.eof())
+			{
+				tempfile.read(buff, bufflen);
+				targetfile.write(buff, tempfile.gcount());
+			}
+			tempfile.close();
+		}
+		targetfile.close();
+		cout << "下载完毕！\n";
 	}
 
 	return 0;
