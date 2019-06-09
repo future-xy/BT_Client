@@ -21,19 +21,27 @@
 using namespace std;
 
 const int bufflen = 20000;
-const string port = "10086";
-const int max_threads = 3;
+const string server_port = "10086";
+const string lis_port = "50520";
 
-
-int download_num = 0;
 mutex mu;
 
 int download(torrent_file);
+int upload();
 
 int main()
 {
+	string server;
+	struct sockaddr_in sin;
+	SOCKET sock;
+	bool isconnected = false;
+
 	WSADATA wsadata;
 	WSAStartup(WSVERS, &wsadata);
+
+	//给其他用户传送文件
+	thread up(upload);
+	up.detach();
 
 	while (true)
 	{
@@ -49,24 +57,44 @@ int main()
 			string filename;
 			cin >> filename;
 			cout << "输入服务器地址：";
-			string server;
 			cin >> server;
+
 			string t_name = make_torrent(filename, server);
-			//
+			//向服务器上传消息
+			sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+			memset(&sin, 0, sizeof(sin));
+			sin.sin_family = AF_INET;
+
+			sin.sin_addr.s_addr = inet_addr(server.c_str());
+			sin.sin_port = htons((u_short)stoi(server_port));
+			int ret = connect(sock, (struct sockaddr *)&sin, sizeof(sin));
+			if (ret == 0)
+				isconnected = true;
+			else
+			{
+				cerr << "ERROR!\n";
+				continue;
+			}
+			
+
 			cout << t_name << "创建成功！" << endl;
 		}
 		else if (order == "2")
 		{
-			cout << "输入文件名：";
+			cout << "输入种子文件名：";
 			string filename;
 			cin >> filename;
 			torrent_file t_file = read_torrent(filename);
 			download(t_file);
-			//传输
 		}
 		else if (order == "q")
 		{
-
+			//告诉服务器离开了
+			if (isconnected)
+			{
+				send(sock, "FIN", 3, 0);
+			}
+			break;
 		}
 	}
 
@@ -76,8 +104,8 @@ int main()
 
 int download(torrent_file tf)
 {
-	struct sockaddr_in sin;
-	SOCKET sock;
+	struct sockaddr_in sin, fsin;
+	SOCKET sock, fsock;
 
 	char buff[bufflen];
 
@@ -86,7 +114,7 @@ int download(torrent_file tf)
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = inet_addr(tf.announce.c_str());
-	sin.sin_port = htons((u_short)stoi(port));
+	sin.sin_port = htons((u_short)stoi(server_port));
 	int ret = connect(sock, (struct sockaddr*)&sin, sizeof(sin));
 
 	if (ret == 0)
@@ -94,37 +122,51 @@ int download(torrent_file tf)
 		send(sock, tf.name.c_str(), tf.name.length(), 0);
 		recv(sock, buff, bufflen, 0);
 		map<string, string> target;
-		//...
+		//解析返回的文件拥有者列表
 
-	/*	//分给多(3)个线程下载
-		int download_task = (tf.pieces.size() + max_threads - 1) / max_threads;
-		int index = 0;
-		for (int i = 0; i < tf.pieces.size(); index++, i += download_task)
+		if (target.size())
 		{
-			thread temp(download_t, i, download_task, index, target);
-			mu.lock();
-			download_num++;
-			mu.unlock();
-			temp.detach();
-		}
-		//避免忙等待
-		while (download_num)
-			this_thread::yield();
-		ofstream targetfile(tf.name, ios::binary);
-		for (int i = 0; i < index; i++)
-		{
-			string tempfilename = to_string(i) + ".temp";
-			ifstream tempfile(tempfilename, ios::binary);
+			//选择一个拥有者进行连接
+			auto item = target.begin();
+			memset(&fsin, 0, sizeof(fsin));
+			sin.sin_family = AF_INET;
+			sin.sin_addr.s_addr = inet_addr(item->first.c_str());
+			sin.sin_port = htons((u_short)stoi(item->second));
 
-			while (!tempfile.eof())
-			{
-				tempfile.read(buff, bufflen);
-				targetfile.write(buff, tempfile.gcount());
-			}
-			tempfile.close();
+			ret = connect(fsock, (struct sockaddr*)&fsin, sizeof(fsin));
+			//传输数据
+
+			send(sock, "FIN", 3, 0);
 		}
-		targetfile.close();
-		cout << "下载完毕！\n";*/
+		else
+		{
+			cerr << "No !" << endl;
+		}
+	}
+
+	return 0;
+}
+
+int upload()
+{
+	SOCKET msock, sock;
+	struct sockaddr_in sin, fsin;
+	int alen;
+
+	msock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = INADDR_ANY;
+	sin.sin_port = htons((u_short)stoi(lis_port));
+	bind(msock, (struct sockaddr *)&sin, sizeof(sin));
+
+	listen(msock, 5);
+
+	while (true)
+	{
+		sock = accept(msock, (struct sockaddr *)&fsin, &alen);
+
 	}
 
 	return 0;
