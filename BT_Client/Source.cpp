@@ -75,7 +75,7 @@ int main()
 				cerr << "ERROR!\n";
 				continue;
 			}
-			
+
 
 			cout << t_name << "创建成功！" << endl;
 		}
@@ -135,8 +135,32 @@ int download(torrent_file tf)
 
 			ret = connect(fsock, (struct sockaddr*)&fsin, sizeof(fsin));
 			//传输数据
+			send(fsock, tf.name.c_str(), tf.name.length(), 0);
+			//结束符
+			string endstr = tf.name + "!!EndFile@@";
+			int endlen = endstr.length();
 
-			send(sock, "FIN", 3, 0);
+			ofstream myof(tf.name, ios::binary);
+			memset(buff, 0, sizeof(buff));
+			while (true)
+			{
+				int cc = recv(fsock, buff, sizeof(buff), 0);
+				//如果收到的数据长度恰好为结束符长度，则判断是否为结束符
+				if (cc == endlen)
+				{
+					buff[cc] = 0;
+					if (string(buff) == endstr)
+						break;
+				}
+				if (cc > 0)
+					myof.write(buff, cc);
+				else
+					break;
+				memset(buff, 0, sizeof(buff));
+			}
+			myof.close();
+
+			//	send(sock, "FIN", 3, 0);
 		}
 		else
 		{
@@ -166,7 +190,25 @@ int upload()
 	while (true)
 	{
 		sock = accept(msock, (struct sockaddr *)&fsin, &alen);
+		char buff[bufflen];
+		int n = recv(sock, buff, bufflen, 0);
+		if (n > 0)
+			buff[n] = 0;
+		else
+		{
 
+		}
+		string filename(buff);
+		ifstream myifs(filename, ios::binary);
+		while (!myifs.eof())
+		{
+			memset(buff, 0, sizeof(buff));
+			myifs.read(buff, bufflen);
+			send(sock, buff, myifs.gcount(), 0);
+		}
+		string endstr = filename + "!!EndFile@@";
+		send(sock, endstr.c_str(), endstr.length(), 0);
+		myifs.close();
 	}
 
 	return 0;
