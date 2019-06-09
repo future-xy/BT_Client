@@ -3,6 +3,7 @@
 
 #include<string>
 #include<vector>
+#include<map>
 
 #include<thread>
 #include<mutex>
@@ -20,7 +21,6 @@
 using namespace std;
 
 const int bufflen = 20000;
-const int piece_len = 20000;
 const string port = "10086";
 const int max_threads = 3;
 
@@ -29,7 +29,6 @@ int download_num = 0;
 mutex mu;
 
 int download(torrent_file);
-int download_t(int start, int num, int index);
 
 int main()
 {
@@ -52,7 +51,8 @@ int main()
 			cout << "输入服务器地址：";
 			string server;
 			cin >> server;
-			string t_name = make_torrent(filename, piece_len, server);
+			string t_name = make_torrent(filename, server);
+			//
 			cout << t_name << "创建成功！" << endl;
 		}
 		else if (order == "2")
@@ -93,14 +93,15 @@ int download(torrent_file tf)
 	{
 		send(sock, tf.name.c_str(), tf.name.length(), 0);
 		recv(sock, buff, bufflen, 0);
+		map<string, string> target;
 		//...
 
-		//分给多(3)个线程下载
+	/*	//分给多(3)个线程下载
 		int download_task = (tf.pieces.size() + max_threads - 1) / max_threads;
 		int index = 0;
 		for (int i = 0; i < tf.pieces.size(); index++, i += download_task)
 		{
-			thread temp(download_t, i, download_task, index);
+			thread temp(download_t, i, download_task, index, target);
 			mu.lock();
 			download_num++;
 			mu.unlock();
@@ -123,7 +124,7 @@ int download(torrent_file tf)
 			tempfile.close();
 		}
 		targetfile.close();
-		cout << "下载完毕！\n";
+		cout << "下载完毕！\n";*/
 	}
 
 	return 0;
