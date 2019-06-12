@@ -1,0 +1,8 @@
+{
+	announce:服务器地址(字符串)
+	info:{
+		length:文件长度(整数)
+		name:文件名(字符串)
+		pieces:文件Hash值(二进制)
+	}
+}
