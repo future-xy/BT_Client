@@ -1,0 +1,9 @@
+{
+	announce:服务器地址(字符串)
+	info:{
+		length:文件长度(整数)
+		name:文件名(字符串)
+		piece_length:每块字节数(整数)
+		pieces:块校验码(字符串)
+	}
+}

@@ -18,8 +18,8 @@ typedef struct {
 
 //从给定的种子文件中读取信息，返回一个torrent_file对象
 torrent_file read_torrent(string filename);
-//根据给定的文件和信息做种子，如果成功返回1，否则返回0
-int make_torrent(string filename, int piece_length, string announce);
+//根据给定的文件和信息做种子，如果成功返回种子文件名，否则返回空字符串
+string make_torrent(string filename, int piece_length, string announce);
 
 
 #endif // !TORRENT
