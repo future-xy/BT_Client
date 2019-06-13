@@ -167,13 +167,22 @@ int download(torrent_file tf)
 			std::this_thread::yield();
 
 		ofstream myofs(tf.name, ios::binary);
-		char tempbuff[bufflen];
+		char* tempbuff = new char[tf.piece_length];
 		for (int i = 0; i < n; i++)
 		{
 			ifstream tempifs(tf.name + to_string(i) + ".temp", ios::binary);
 			while (!tempifs.eof())
 			{
-				tempifs.read(tempbuff, bufflen);
+				tempifs.read(tempbuff, tf.piece_length);
+				//对收到的文件块进行hash校验
+				if (tf.pieces[i] != SHA1(tempbuff, tempifs.gcount()))
+				{
+					cerr << "校验失败！\n";
+					tempifs.close();
+					myofs.clear();
+					myofs.close();
+					return -1;
+				}
 				myofs.write(tempbuff, tempifs.gcount());
 			}
 			tempifs.close();
@@ -218,6 +227,10 @@ int download_t(string ip, string port, string filename, int start, int num, int 
 		num -= cc;
 	}
 	myofs.close();
+
+	mu.lock();
+	--t_num;
+	mu.unlock();
 
 	return num;
 }
