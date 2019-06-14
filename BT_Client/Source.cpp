@@ -21,7 +21,16 @@
 
 #pragma comment(lib,"ws2_32.lib")
 
-using namespace std;
+using std::string;
+using std::thread;
+using std::ofstream;
+using std::ifstream;
+using std::cin;
+using std::cout;
+using std::endl;
+using std::mutex;
+using std::map;
+using std::vector;
 
 const int bufflen = 20000;
 const string server_port = "10086";
