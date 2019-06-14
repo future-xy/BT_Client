@@ -1,11 +1,29 @@
 #ifndef HASH_H
 #define HASH_H
 
-#include<string>
+#include <cstdint>
+#include <iostream>
+#include <string>
 
-using namespace std;
 
-//¶Ôbuff½øÐÐhash£¬·µ»Ø20×Ö½ÚµÄ¹þÏ£Öµ
-string SHA1(char* buff, int bufflen);
+class SHA1class
+{
+public:
+    SHA1class();
+    void update(const std::string &s);
+    void update(std::istream &is);
+	void update(const char buff[], int bufflen);
+    std::string final();
+    static std::string from_file(const std::string &filename);
+
+private:
+    uint32_t digest[5];
+    std::string buffer;
+    uint64_t transforms;
+};
+
+//å¯¹buffè¿›è¡Œhashï¼Œè¿”å›ž20å­—èŠ‚çš„å“ˆå¸Œå€¼
+std::string SHA1(char* buff, int bufflen);
+
 
 #endif // !HASH_H

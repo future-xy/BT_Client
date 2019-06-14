@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/BT_Client.dir/x.cpp.o  -o BT_Client 
