@@ -1,0 +1,3 @@
+/home/jijorbq/Documents/allEXPR/BT_Client/BT_Client/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/jijorbq/Documents/allEXPR/BT_Client/BT_Client/cmake-build-debug/CMakeFiles/x.dir
+/home/jijorbq/Documents/allEXPR/BT_Client/BT_Client/cmake-build-debug/CMakeFiles/edit_cache.dir
