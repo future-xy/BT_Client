@@ -205,6 +205,7 @@ void download(torrent_file tf)
 			while (!tempifs.eof())
 			{
 				tempifs.read(tempbuff, tf.piece_length);
+				int a = tempifs.gcount();
 				//对收到的文件块进行hash校验
 				if (tf.pieces[i] != SHA1(tempbuff, tempifs.gcount()))
 				{
