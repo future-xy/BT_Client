@@ -1,6 +1,7 @@
 #include "hash.h"
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 #include <fstream>
 #include <stdint-gcc.h>
 
@@ -282,7 +283,6 @@ std::string SHA1class::final()
 
     /* Reset for next run */
     reset(digest, buffer, transforms);
-
     return result;
 }
 

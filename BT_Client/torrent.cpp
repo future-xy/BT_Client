@@ -42,9 +42,9 @@ torrent_file read_torrent(string filename){
 //	torrent_file res;
 //	assert(s.front()=='d' && s.back()=='e');
 //	s=s.substr(1, s.size()-2);
-    FILE *fin=fopen(filename.c_str(), "r"); int filesz=0;
+    FILE *fin=fopen(filename.c_str(), "rb"); int filesz=0;
     for (char tmpc;fread(&tmpc, 1, 1, fin); ++filesz);
-    fclose(fin); fin=fopen(filename.c_str(), "r");
+    fclose(fin); fin=fopen(filename.c_str(), "rb");
     char *s=new char[filesz+1];
     fread(s, 1, filesz, fin); fclose(fin);
     assert(s[0]=='d' && s[--filesz]=='e');
@@ -97,12 +97,13 @@ string make_torrent(string filename, int piece_length, string announce){
 
 	char *buf= new char[piece_length+1];
 	string torrname,s;
-	if ( filename.find('.')==string::npos)torrname=filename+".torrent";
-		else torrname=filename.substr(0, filename.find('.'))+".torrent";
-	FILE *fin=fopen(filename.c_str(), "r"),*fout=fopen(torrname.c_str(),"w");
+//	if ( filename.find('.')==string::npos)
+	torrname=filename+".torrent";
+//		else torrname=filename.substr(0, filename.find('.'))+".torrent";
+	FILE *fin=fopen(filename.c_str(), "rb"),*fout=fopen(torrname.c_str(),"wb");
     fseek(fin,0, SEEK_END);
     int filesz=ftell(fin);
-    fclose(fin); fin=fopen(filename.c_str(), "r");
+    fclose(fin); fin=fopen(filename.c_str(), "rb");
 	write_to_file("d",fout);
 	write_to_file(make_torrent_str("announce")+make_torrent_str(announce),
 				fout);

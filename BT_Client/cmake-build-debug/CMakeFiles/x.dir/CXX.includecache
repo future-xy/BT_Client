@@ -6,6 +6,20 @@
 
 #IncludeRegexTransform: 
 
+/home/jijorbq/Documents/allEXPR/BT_Client/BT_Client/hash.cpp
+hash.h
+/home/jijorbq/Documents/allEXPR/BT_Client/BT_Client/hash.h
+sstream
+-
+iomanip
+-
+iostream
+-
+fstream
+-
+stdint-gcc.h
+-
+
 /home/jijorbq/Documents/allEXPR/BT_Client/BT_Client/hash.h
 cstdint
 -
