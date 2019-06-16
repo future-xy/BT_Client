@@ -199,7 +199,8 @@ void download(torrent_file tf)
 		char* tempbuff = new char[tf.piece_length];
 		for (int i = 0; i < n; i++)
 		{
-			ifstream tempifs(tf.name + to_string(i) + ".temp", ios::binary);
+			string tempname = tf.name + to_string(i) + ".temp";
+			ifstream tempifs(tempname, ios::binary);
 			cout << "正在合并" << i << "临时文件！" << endl;
 			while (!tempifs.eof())
 			{
@@ -216,6 +217,7 @@ void download(torrent_file tf)
 				myofs.write(tempbuff, tempifs.gcount());
 			}
 			tempifs.close();
+			remove(tempname.c_str());
 		}
 		myofs.close();
 		mu.lock();
