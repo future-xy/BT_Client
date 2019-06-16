@@ -13,6 +13,7 @@
 #define NOMINMAX 
 #include<WinSock2.h>
 #include<stdlib.h>
+#include<cstdio>
 
 #include"hash.h"
 #include"torrent.h"
@@ -31,8 +32,14 @@ using std::endl;
 using std::mutex;
 using std::map;
 using std::vector;
+using std::istringstream;
+using std::cerr;
+using std::min;
+using std::ios;
+using std::to_string;
 
 const int bufflen = 20000;
+const int templen = 10;
 const string server_port = "10086";
 const string lis_port = "50520";
 const int piece_length = 20000;
@@ -40,10 +47,10 @@ const int piece_length = 20000;
 int t_num = 0;
 mutex mu;
 
-int download(torrent_file);
-int download_t(string ip, string port, string filename, int start, int num, int index);
-int upload();
-int upload_t(SOCKET sock);
+void download(torrent_file);
+void download_t(string ip, string port, string filename, int start, int num, int index);
+void upload();
+void upload_t(SOCKET sock);
 
 int main()
 {
@@ -76,6 +83,7 @@ int main()
 			cin >> server;
 
 			string t_name = make_torrent(filename, piece_length, server);
+			//cout << "做种成功！\n";
 			//向服务器上传消息
 			sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 			memset(&sin, 0, sizeof(sin));
@@ -91,8 +99,11 @@ int main()
 				cerr << "ERROR!\n";
 				continue;
 			}
+			char tempbuff[templen];
 			send(sock, "0", 1, 0);
+			recv(sock, tempbuff, templen, 0);
 			send(sock, filename.c_str(), filename.size(), 0);
+			recv(sock, tempbuff, templen, 0);
 			send(sock, lis_port.c_str(), lis_port.size(), 0);
 
 			cout << t_name << "创建成功！" << endl;
@@ -120,7 +131,7 @@ int main()
 	return 0;
 }
 
-int download(torrent_file tf)
+void download(torrent_file tf)
 {
 	struct sockaddr_in sin;
 	SOCKET sock;
@@ -138,6 +149,7 @@ int download(torrent_file tf)
 	if (ret == 0)
 	{
 		send(sock, "1", 1, 0);
+		recv(sock, buff, bufflen, 0);
 		send(sock, tf.name.c_str(), tf.name.length(), 0);
 		int cc = recv(sock, buff, bufflen, 0);
 		buff[cc] = 0;
@@ -146,6 +158,9 @@ int download(torrent_file tf)
 		istringstream ifs(buff);
 		int n;
 		ifs >> n;
+		mu.lock();
+		cout << "找到" << n << "个拥有者！" << endl;
+		mu.unlock();
 		for (int i = 0; i < n; i++)
 		{
 			string ip, port;
@@ -158,28 +173,34 @@ int download(torrent_file tf)
 		int task_num = (piece_num + n - 1) / n;
 		//一个线程向一个拥有者索要
 		int index = 0;
+		int num = tf.length;
 		for (auto item : target)
 		{
-			/*最后一个可能会有不足*/
-			thread temp(download_t, item.first, item.second, tf.name, index*task_num*tf.piece_length,
-				min(task_num, piece_num)*tf.piece_length, index);
-			++index;
-			piece_num -= task_num;
 			//访问临界区
 			mu.lock();
 			t_num++;
 			mu.unlock();
+
+			/*最后一个可能会有不足*/
+			thread temp(download_t, item.first, item.second, tf.name, index*task_num*tf.piece_length,
+				min(task_num*tf.piece_length, num), index);
+			++index;
+			num -= index * task_num*tf.piece_length;
+			if (num <= 0)
+				break;
 			temp.detach();
 		}
 		//让权等待所有线程下载完毕
-		while (t_num)
-			std::this_thread::yield();
-
+		while (t_num);
+		mu.lock();
+		cout << "下载完毕，正在合并文件！" << endl;
+		mu.unlock();
 		ofstream myofs(tf.name, ios::binary);
 		char* tempbuff = new char[tf.piece_length];
 		for (int i = 0; i < n; i++)
 		{
 			ifstream tempifs(tf.name + to_string(i) + ".temp", ios::binary);
+			cout << "正在合并" << i << "临时文件！" << endl;
 			while (!tempifs.eof())
 			{
 				tempifs.read(tempbuff, tf.piece_length);
@@ -190,23 +211,28 @@ int download(torrent_file tf)
 					tempifs.close();
 					myofs.clear();
 					myofs.close();
-					return -1;
+					return;
 				}
 				myofs.write(tempbuff, tempifs.gcount());
 			}
 			tempifs.close();
 		}
 		myofs.close();
+		mu.lock();
+		cout << "下载成功！" << endl;
+		mu.unlock();
 		//通知服务器
 		send(sock, "0", 1, 0);
+		recv(sock, buff, bufflen, 0);
 		send(sock, tf.name.c_str(), tf.name.size(), 0);
+		recv(sock, buff, bufflen, 0);
 		send(sock, lis_port.c_str(), lis_port.size(), 0);
 	}
 
-	return 0;
+	return;
 }
 
-int download_t(string ip, string port, string filename, int start, int num, int index)
+void download_t(string ip, string port, string filename, int start, int num, int index)
 {
 	ofstream myofs(filename + to_string(index) + ".temp", ios::binary);
 
@@ -221,10 +247,15 @@ int download_t(string ip, string port, string filename, int start, int num, int 
 	sin.sin_port = htons((u_short)stoi(port));
 	connect(sock, (struct sockaddr*)&sin, sizeof(sin));
 	//发送文件名
+	mu.lock();
+	cout << index << "号拥有者连接成功！" << endl;
+	mu.unlock();
 	send(sock, filename.c_str(), filename.size(), 0);
+	recv(sock, buff, bufflen, 0);
 	//发送起始位置
 	string temp = to_string(start);
 	send(sock, temp.c_str(), temp.size(), 0);
+	recv(sock, buff, bufflen, 0);
 	//发送字节数
 	temp = to_string(num);
 	send(sock, temp.c_str(), temp.size(), 0);
@@ -238,13 +269,14 @@ int download_t(string ip, string port, string filename, int start, int num, int 
 	myofs.close();
 
 	mu.lock();
+	cout << "第" << index << "部分接收完毕！" << endl;
 	--t_num;
 	mu.unlock();
 
-	return num;
+	return;
 }
 
-int upload()
+void upload()
 {
 	SOCKET msock, sock;
 	struct sockaddr_in sin, fsin;
@@ -263,31 +295,38 @@ int upload()
 	while (true)
 	{
 		sock = accept(msock, (struct sockaddr *)&fsin, &alen);
+		mu.lock();
+		cout << "收到" << inet_ntoa(fsin.sin_addr) << "的连接请求！" << endl;
+		mu.unlock();
 		thread temp(upload_t, sock);
-		//
 		temp.detach();
 	}
 
-	return 0;
+	return;
 }
 
-int upload_t(SOCKET sock)
+void upload_t(SOCKET sock)
 {
 	char buff[bufflen];
 	//文件名
 	int cc = recv(sock, buff, bufflen, 0);
 	buff[cc] = 0;
 	ifstream myifs(string(buff), ios::binary);
+	send(sock, "y", 1, 0);
 	//起始位置
 	cc = recv(sock, buff, bufflen, 0);
 	buff[cc] = 0;
 	int start = stoi(string(buff));
+	send(sock, "y", 1, 0);
 	//字节数
 	cc = recv(sock, buff, bufflen, 0);
 	buff[cc] = 0;
 	int num = stoi(string(buff));
 	//移动文件指针
 	myifs.seekg(start, ios::beg);
+	mu.lock();
+	cout << "正在传输文件！" << endl;
+	mu.unlock();
 	while (!myifs.eof() && num > 0)
 	{
 		myifs.read(buff, min(bufflen, num));
@@ -295,6 +334,9 @@ int upload_t(SOCKET sock)
 		num -= myifs.gcount();
 	}
 	myifs.close();
+	mu.lock();
+	cout << "文件传输成功！" << endl;
+	mu.unlock();
 
-	return num;
+	return;
 }

@@ -9,17 +9,17 @@
 class SHA1class
 {
 public:
-    SHA1class();
-    void update(const std::string &s);
-    void update(std::istream &is);
+	SHA1class();
+	void update(const std::string &s);
+	void update(std::istream &is);
 	void update(const char buff[], int bufflen);
-    std::string final();
-    static std::string from_file(const std::string &filename);
+	std::string final();
+	static std::string from_file(const std::string &filename);
 
 private:
-    uint32_t digest[5];
-    std::string buffer;
-    uint64_t transforms;
+	uint32_t digest[5];
+	std::string buffer;
+	uint64_t transforms;
 };
 
 //对buff进行hash，返回20字节的哈希值
