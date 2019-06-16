@@ -186,9 +186,9 @@ void download(torrent_file tf)
 				min(task_num*tf.piece_length, num), index);
 			++index;
 			num -= index * task_num*tf.piece_length;
+			temp.detach();
 			if (num <= 0)
 				break;
-			temp.detach();
 		}
 		//让权等待所有线程下载完毕
 		while (t_num);
