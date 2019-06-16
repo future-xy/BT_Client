@@ -81,6 +81,8 @@ torrent_file read_torrent(string filename) {
 			fprintf(stderr, "Wrong on item name");
 		}
 	}
+
+	delete[]s;
 	return res;
 }
 
@@ -147,5 +149,6 @@ string make_torrent(string filename, int piece_length, string announce) {
 	}
 	write_to_file("e", fout);
 	fclose(fout);
+	delete[]buf;
 	return torrname;
 }

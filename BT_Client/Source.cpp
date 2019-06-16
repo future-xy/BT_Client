@@ -38,11 +38,11 @@ using std::min;
 using std::ios;
 using std::to_string;
 
-const int bufflen = 20000;
+const int bufflen = 1000000;
 const int templen = 10;
 const string server_port = "10086";
 const string lis_port = "50520";
-const int piece_length = 20000;
+const int piece_length = 2000000;
 
 int t_num = 0;
 mutex mu;
