@@ -252,8 +252,13 @@ void download_t(string ip, string port, string filename, int start, int num, int
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = inet_addr(ip.c_str());
 	sin.sin_port = htons((u_short)stoi(port));
-	connect(sock, (struct sockaddr*)&sin, sizeof(sin));
+	int ret = connect(sock, (struct sockaddr*)&sin, sizeof(sin));
 	//发送文件名
+	if (ret != 0)
+	{
+		cout << "与" << ip << "连接失败！" << endl;
+		return;
+	}
 	mu.lock();
 	cout << "与" << ip << "连接成功！" << endl;
 	mu.unlock();
