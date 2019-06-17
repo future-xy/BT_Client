@@ -42,7 +42,7 @@ const int bufflen = 1000000;
 const int templen = 10;
 const string server_port = "10086";
 const string lis_port = "50520";
-const int piece_length = 2000000;
+const int piece_length = 2;
 
 mutex mu;
 
@@ -180,8 +180,8 @@ void download(torrent_file tf)
 		for (auto item : target)
 		{
 			/*最后一个可能会有不足*/
-			t_pool[index] = new thread(download_t, item.first, item.second, tf.name, index*task_num*tf.piece_length,
-				min(task_num*tf.piece_length, num), index);
+			t_pool.push_back(new thread(download_t, item.first, item.second, tf.name, index*task_num*tf.piece_length,
+				min(task_num*tf.piece_length, num), index));
 			++index;
 			num -= index * task_num*tf.piece_length;
 			if (num <= 0)
@@ -204,11 +204,15 @@ void download(torrent_file tf)
 		{
 			string tempname = tf.name + to_string(i) + ".temp";
 			ifstream tempifs(tempname, ios::binary);
-			cout << "正在合并临时文件<<" << i << "！" << endl;
+			cout << "正在合并临时文件" << i << "！" << endl;
 			while (!tempifs.eof())
 			{
 				tempifs.read(tempbuff, tf.piece_length);
 				int a = tempifs.gcount();
+				if (a == 0)
+					break;
+				tempbuff[a] = 0;
+				string tem(tempbuff);
 				//对收到的文件块进行hash校验
 				if (tf.pieces[j++] != SHA1(tempbuff, tempifs.gcount()))
 				{
