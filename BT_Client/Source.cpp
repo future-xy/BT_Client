@@ -42,7 +42,7 @@ const int bufflen = 1000000;
 const int templen = 10;
 const string server_port = "10086";
 const string lis_port = "50520";
-const int piece_length = 2;
+int piece_length = 2;
 
 mutex mu;
 
@@ -78,6 +78,8 @@ int main()
 			cout << "输入文件名：";
 			string filename;
 			cin >> filename;
+			cout << "输入块长度";
+			cin >> piece_length;
 			cout << "输入服务器地址：";
 			cin >> server;
 
