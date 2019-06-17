@@ -44,7 +44,6 @@ const string server_port = "10086";
 const string lis_port = "50520";
 const int piece_length = 2000000;
 
-int t_num = 0;
 mutex mu;
 
 void download(torrent_file);
@@ -83,7 +82,7 @@ int main()
 			cin >> server;
 
 			string t_name = make_torrent(filename, piece_length, server);
-			//cout << "做种成功！\n";
+			cout << "做种成功！\n";
 			//向服务器上传消息
 			sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 			memset(&sin, 0, sizeof(sin));
@@ -127,6 +126,9 @@ int main()
 		}
 	}
 
+	cout << "输入任意键退出..." << endl;
+	getchar();
+	getchar();
 
 	return 0;
 }
@@ -174,40 +176,41 @@ void download(torrent_file tf)
 		//一个线程向一个拥有者索要
 		int index = 0;
 		int num = tf.length;
+		vector<thread*> t_pool;
 		for (auto item : target)
 		{
-			//访问临界区
-			mu.lock();
-			t_num++;
-			mu.unlock();
-
 			/*最后一个可能会有不足*/
-			thread temp(download_t, item.first, item.second, tf.name, index*task_num*tf.piece_length,
+			t_pool[index] = new thread(download_t, item.first, item.second, tf.name, index*task_num*tf.piece_length,
 				min(task_num*tf.piece_length, num), index);
 			++index;
 			num -= index * task_num*tf.piece_length;
-			temp.detach();
 			if (num <= 0)
 				break;
 		}
-		//让权等待所有线程下载完毕
-		while (t_num);
+
+		for (auto item : t_pool)
+		{
+			item->join();
+			delete item;
+		}
+
 		mu.lock();
 		cout << "下载完毕，正在合并文件！" << endl;
 		mu.unlock();
 		ofstream myofs(tf.name, ios::binary);
 		char* tempbuff = new char[tf.piece_length];
-		for (int i = 0; i < n; i++)
+
+		for (int i = 0, j = 0; i < index; i++)
 		{
 			string tempname = tf.name + to_string(i) + ".temp";
 			ifstream tempifs(tempname, ios::binary);
-			cout << "正在合并" << i << "临时文件！" << endl;
+			cout << "正在合并临时文件<<" << i << "！" << endl;
 			while (!tempifs.eof())
 			{
 				tempifs.read(tempbuff, tf.piece_length);
 				int a = tempifs.gcount();
 				//对收到的文件块进行hash校验
-				if (tf.pieces[i] != SHA1(tempbuff, tempifs.gcount()))
+				if (tf.pieces[j++] != SHA1(tempbuff, tempifs.gcount()))
 				{
 					cerr << "校验失败！\n";
 					tempifs.close();
@@ -219,10 +222,11 @@ void download(torrent_file tf)
 			}
 			tempifs.close();
 			remove(tempname.c_str());
+			cout << "临时文件" << i << "合并成功！" << endl;
 		}
 		myofs.close();
 		mu.lock();
-		cout << "下载成功！" << endl;
+		cout << tf.name << "下载成功！" << endl;
 		mu.unlock();
 		//通知服务器
 		send(sock, "0", 1, 0);
@@ -251,7 +255,7 @@ void download_t(string ip, string port, string filename, int start, int num, int
 	connect(sock, (struct sockaddr*)&sin, sizeof(sin));
 	//发送文件名
 	mu.lock();
-	cout << index << "号拥有者连接成功！" << endl;
+	cout << "与" << ip << "连接成功！" << endl;
 	mu.unlock();
 	send(sock, filename.c_str(), filename.size(), 0);
 	recv(sock, buff, bufflen, 0);
@@ -273,7 +277,6 @@ void download_t(string ip, string port, string filename, int start, int num, int
 
 	mu.lock();
 	cout << "第" << index << "部分接收完毕！" << endl;
-	--t_num;
 	mu.unlock();
 
 	return;
@@ -315,6 +318,7 @@ void upload_t(SOCKET sock)
 	int cc = recv(sock, buff, bufflen, 0);
 	buff[cc] = 0;
 	ifstream myifs(string(buff), ios::binary);
+	//send只起同步作用
 	send(sock, "y", 1, 0);
 	//起始位置
 	cc = recv(sock, buff, bufflen, 0);
@@ -328,7 +332,7 @@ void upload_t(SOCKET sock)
 	//移动文件指针
 	myifs.seekg(start, ios::beg);
 	mu.lock();
-	cout << "正在传输文件！" << endl;
+	cout << "正在发送文件!" << endl;
 	mu.unlock();
 	while (!myifs.eof() && num > 0)
 	{
@@ -338,7 +342,7 @@ void upload_t(SOCKET sock)
 	}
 	myifs.close();
 	mu.lock();
-	cout << "文件传输成功！" << endl;
+	cout << "文件发送成功！" << endl;
 	mu.unlock();
 
 	return;
