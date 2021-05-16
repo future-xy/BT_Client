@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/x.dir/hash.cpp.o CMakeFiles/x.dir/x.cpp.o CMakeFiles/x.dir/torrent.cpp.o  -o x 
